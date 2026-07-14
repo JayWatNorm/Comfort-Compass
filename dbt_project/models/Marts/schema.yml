@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: direction_score
+    columns:
+      - name: band
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['hot', 'mild', 'cold']
+      - name: location_direction
+        tests:
+          - not_null
+      - name: recommendation_rank
+        tests:
+          - not_null:
+              config:
+                where: "eligible = true"
