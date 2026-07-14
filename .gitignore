@@ -9,9 +9,9 @@ __pycache__/
 venv/
 
 # dbt
-dbt_project/target/
-dbt_project/logs/
-dbt_project/dbt_packages/
+target/
+logs/
+dbt_packages/
 
 # Postgres data (if run via Docker volumes)
 postgres_data/

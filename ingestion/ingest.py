@@ -90,7 +90,8 @@ try:
 except Exception as e:
     print("Failed to connect:", e)
 
-
+cursor.execute("Truncate table raw_weather_readings")
+cursor.execute("Truncate table raw_locations")
 for loc in ringlocations:
     cursor.execute(
         "INSERT INTO raw_locations (location_id, latitude, longitude) VALUES (%s, %s, %s) ON CONFLICT (location_id) DO NOTHING",
