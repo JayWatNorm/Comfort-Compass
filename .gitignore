@@ -1,0 +1,23 @@
+# Secrets / environment config
+.env
+config.yaml
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# dbt
+dbt_project/target/
+dbt_project/logs/
+dbt_project/dbt_packages/
+
+# Postgres data (if run via Docker volumes)
+postgres_data/
+*.sqlite3
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+.vscode/
