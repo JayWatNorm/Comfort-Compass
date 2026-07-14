@@ -1,13 +1,14 @@
 with home_temp as (
     select
         time,
-        temperature as home_temperature
+        apparent_temperature as home_apparent_temperature
     from {{ ref('stg_weather_readings') }}
     where location_id = 'home'
 ),
 
 banded as (
     select
+        r.location_id,
         case
             when r.location_id = 'home' then 'Home'
             when r.location_id = '0' then 'North'
@@ -22,12 +23,13 @@ banded as (
         end as location_direction,
         r.time,
         r.temperature,
+        r.apparent_temperature,
         r.rain_probability,
         r.wind_speed,
-        h.home_temperature,
+        h.home_apparent_temperature,
         case
-            when h.home_temperature > 20 then 'hot'
-            when h.home_temperature < 15 then 'cold'
+            when h.home_apparent_temperature > 20 then 'hot'
+            when h.home_apparent_temperature < 15 then 'cold'
             else 'mild'
         end as band
     from {{ ref('stg_weather_readings') }} r
@@ -42,13 +44,10 @@ flagged as (
             when rain_probability > 50 then false
             else true
         end as eligible,
-        max(temperature) over (partition by time) as hottest_this_hour,
-        min(temperature) over (partition by time) as coolest_this_hour,
-        case when temperature = max(temperature) over (partition by time) then true else false end as is_hottest,
-        case when temperature = min(temperature) over (partition by time) then true else false end as is_coolest,
-        round(temperature) as temp_bucket,
-        max(wind_speed) over (partition by time, round(temperature)) as bucket_max_wind,
-        min(wind_speed) over (partition by time, round(temperature)) as bucket_min_wind
+        max(apparent_temperature) over (partition by time) as hottest_feel_this_hour,
+        min(apparent_temperature) over (partition by time) as coolest_feel_this_hour,
+        case when apparent_temperature = max(apparent_temperature) over (partition by time) then true else false end as is_hottest,
+        case when apparent_temperature = min(apparent_temperature) over (partition by time) then true else false end as is_coolest
     from banded
 )
 
@@ -58,13 +57,14 @@ select
         when eligible then rank() over (
             partition by time, eligible
             order by
-                case when band = 'hot' then temp_bucket end asc,
-                case
-                    when band = 'hot' and (bucket_max_wind - bucket_min_wind) >= 5 then -wind_speed
-                    when band = 'hot' then temperature
-                end asc,
-                case when band = 'mild' then wind_speed end asc,
-                case when band = 'cold' then temperature end desc
+                case when band = 'hot' then apparent_temperature end asc,
+                case when band = 'mild' then apparent_temperature end asc,
+                case when band = 'cold' then apparent_temperature end desc
         )
-    end as recommendation_rank
+    end as recommendation_rank,
+    case
+        when band = 'hot' then 'Feels cooler than nearby areas'
+        when band = 'mild' then 'Feels less muggy and more comfortable than nearby areas'
+        when band = 'cold' then 'Feels warmer than nearby areas'
+    end as reason
 from flagged

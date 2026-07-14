@@ -34,7 +34,7 @@ def generate_ring(lat, lon, distance_km):
 
 
 def get_hourly_weather(lat, lon, location_id):
-    response = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,precipitation_probability,wind_speed_10m&forecast_hours=6")
+    response = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,precipitation_probability,wind_speed_10m,apparent_temperature&forecast_hours=6")
     data = response.json()
     hourly = data['hourly']
 
@@ -45,7 +45,8 @@ def get_hourly_weather(lat, lon, location_id):
             "time": hourly['time'][i],
             "temperature": hourly['temperature_2m'][i],
             "rain_probability": hourly['precipitation_probability'][i],
-            "wind_speed": hourly['wind_speed_10m'][i]
+            "wind_speed": hourly['wind_speed_10m'][i],
+            "apparent_temperature": hourly['apparent_temperature'][i]
         })
 
     return readings
@@ -100,8 +101,8 @@ for loc in ringlocations:
 
 for reading in all_readings:
     cursor.execute(
-        "INSERT INTO raw_weather_readings (location_id, time, temperature, rain_probability, wind_speed) VALUES (%s, %s, %s, %s, %s)",
-        (reading["location_id"], reading["time"], reading["temperature"], reading["rain_probability"], reading["wind_speed"])
+        "INSERT INTO raw_weather_readings (location_id, time, temperature, rain_probability, wind_speed, apparent_temperature) VALUES (%s, %s, %s, %s, %s, %s)",
+        (reading["location_id"], reading["time"], reading["temperature"], reading["rain_probability"], reading["wind_speed"], reading["apparent_temperature"])
     )
 
 conn.commit()

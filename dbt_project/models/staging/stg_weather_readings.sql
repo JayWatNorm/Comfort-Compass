@@ -1,3 +1,3 @@
 select
-    location_id, time, temperature, rain_probability, wind_speed
+    location_id, time, temperature, rain_probability, wind_speed, apparent_temperature
 from {{ source('raw', 'raw_weather_readings') }}
