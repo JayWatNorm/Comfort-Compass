@@ -1,8 +1,9 @@
+import os
 import requests
 import pandas as pd
 import math
 import psycopg2
-import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,7 +18,7 @@ def generate_ring(lat, lon, distance_km):
     bearings = [0, 45, 90, 135, 180, 225, 270, 315]
     points = []
 
-    for locationId, bearing in enumerate(bearings):
+    for location_id, bearing in enumerate(bearings):
         angle = math.radians(bearing)
         delta_lat = (distance_km * math.cos(angle)) / 111
         delta_lon = (distance_km * math.sin(angle)) / (111 * math.cos(math.radians(lat)))
@@ -25,7 +26,7 @@ def generate_ring(lat, lon, distance_km):
         new_lat = lat + delta_lat
         new_lon = lon + delta_lon
         points.append({
-            "location_id": locationId,
+            "location_id": location_id,
             "latitude": new_lat,
             "longitude": new_lon
         })
@@ -34,13 +35,16 @@ def generate_ring(lat, lon, distance_km):
 
 
 def get_hourly_weather(lat, lon, location_id):
-    response = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,precipitation_probability,wind_speed_10m,apparent_temperature&forecast_hours=6")
-    data = response.json()
-    hourly = data['hourly']
+    response = requests.get(
+        f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,precipitation_probability,wind_speed_10m,apparent_temperature&forecast_hours=6",
+        timeout=10,
+    )
+    weather_data = response.json()
+    hourly = weather_data['hourly']
 
-    readings = []
+    hourly_readings = []
     for i in range(len(hourly['time'])):
-        readings.append({
+        hourly_readings.append({
             "location_id": location_id,
             "time": hourly['time'][i],
             "temperature": hourly['temperature_2m'][i],
@@ -49,14 +53,14 @@ def get_hourly_weather(lat, lon, location_id):
             "apparent_temperature": hourly['apparent_temperature'][i]
         })
 
-    return readings
+    return hourly_readings
 
 
 load_dotenv()
 postcode = os.getenv("POSTCODE")
 
-response = requests.get(f"https://api.postcodes.io/postcodes/{postcode}")
-data = response.json()
+postcode_response = requests.get(f"https://api.postcodes.io/postcodes/{postcode}")
+data = postcode_response.json()
 longitude = data['result']['longitude']
 latitude = data['result']['latitude']
 home_location = {

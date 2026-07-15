@@ -78,9 +78,17 @@ Docker/Pi deployment not yet started.
 2. `python -m venv venv` then activate it, then `pip install -r requirements.txt`.
    Note: dbt-core currently requires Python 3.12 or earlier (not 3.13/3.14)
    due to a dependency (`mashumaro`) compatibility gap.
-3. Create the `weather_direction` Postgres database and run the `CREATE TABLE`
-   statements for `raw_locations` and `raw_weather_readings` (see dbt sources
-   in `dbt_project/models/staging/sources.yml` for expected shape).
+3. `python ingestion/setup_db.py` — creates the `weather_direction` database
+   (if missing) and both raw tables from `db/init.sql`. Safe to re-run any
+   time; it's idempotent and won't touch existing data.
 4. `python ingestion/ingest.py` to populate the raw tables.
 5. `cd dbt_project`, `dbt run`, `dbt test`.
 6. `cd ../flask_app`, `python app.py`, visit `http://127.0.0.1:5000`.
+
+## Database schema
+
+`db/init.sql` is the single source of truth for the raw table schema — it's
+run by `ingestion/setup_db.py` today, and will be reused unchanged as
+Docker's `/docker-entrypoint-initdb.d/` init script once containerised
+(Postgres runs it automatically on first container start against an empty
+data volume, no Python needed at that point).
