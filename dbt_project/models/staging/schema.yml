@@ -5,12 +5,17 @@ models:
     columns:
       - name: location_id
         tests:
-          - unique
+          - not_null
+      - name: home_postcode
+        tests:
           - not_null
       - name: latitude
         tests:
           - not_null
       - name: longitude
+        tests:
+          - not_null
+      - name: snapshot_time
         tests:
           - not_null
 
@@ -20,5 +25,8 @@ models:
         tests:
           - not_null
       - name: temperature
+        tests:
+          - not_null
+      - name: snapshot_time
         tests:
           - not_null

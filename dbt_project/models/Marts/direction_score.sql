@@ -1,14 +1,25 @@
-with home_temp as (
-    select
-        time,
-        apparent_temperature as home_apparent_temperature
+with latest_snapshot as (
+    -- Whichever ingestion run is most recent wins - this is what makes a
+    -- live /fetch immediately supersede the .env default postcode without
+    -- needing separate logic to distinguish the two.
+    select max(snapshot_time) as snapshot_time
     from {{ ref('stg_weather_readings') }}
-    where location_id = 'home'
+),
+
+home_temp as (
+    select
+        r.snapshot_time,
+        r.time,
+        r.apparent_temperature as home_apparent_temperature
+    from {{ ref('stg_weather_readings') }} r
+    join latest_snapshot ls on r.snapshot_time = ls.snapshot_time
+    where r.location_id = 'home'
 ),
 
 banded as (
     select
         r.location_id,
+        r.snapshot_time,
         case
             when r.location_id = 'home' then 'Home'
             when r.location_id = '0' then 'North'
@@ -32,8 +43,12 @@ banded as (
             when h.home_apparent_temperature < 15 then 'cold'
             else 'mild'
         end as band
+    -- Joining on snapshot_time as well as time matters now that multiple
+    -- runs' readings coexist in stg_weather_readings - otherwise this would
+    -- cross-join readings from different ingestion runs that happen to
+    -- share the same forecasted hour.
     from {{ ref('stg_weather_readings') }} r
-    join home_temp h on r.time = h.time
+    join home_temp h on r.time = h.time and r.snapshot_time = h.snapshot_time
 ),
 
 flagged as (

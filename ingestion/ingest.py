@@ -3,6 +3,7 @@ import pandas as pd
 import math
 import psycopg2
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -25,10 +26,34 @@ def generate_ring(lat, lon, distance_km):
 
         new_lat = lat + delta_lat
         new_lon = lon + delta_lon
+
+        checkdistance = requests.get(
+            f"https://api.postcodes.io/postcodes?lon={new_lon}&lat={new_lat}&wideSearch=true",
+            timeout=10
+        )
+        result = checkdistance.json()['result']
+
+        if not result:
+            # Nothing within 20km at all (wideSearch's own cap) - essentially
+            # open sea, far from any coastline. No postcode to pull back to,
+            # so this ring point is dropped rather than stored with bad data.
+            print(f"No postcode found near point {locationId} ({new_lat}, {new_lon}) - skipping")
+            continue
+
+        nearest = result[0]
+        closestpostcodedistance = nearest['distance']
+
+        if closestpostcodedistance >= 2000:
+            # Ring point is at least 2km from the nearest postcode (likely
+            # sea) - pull it back to the nearest postcode's own coordinates.
+            new_lat = nearest['latitude']
+            new_lon = nearest['longitude']
+
         points.append({
             "location_id": locationId,
             "latitude": new_lat,
-            "longitude": new_lon
+            "longitude": new_lon,
+            "nearest_location_distance": closestpostcodedistance
         })
 
     return points
@@ -36,7 +61,7 @@ def generate_ring(lat, lon, distance_km):
 
 def get_hourly_weather(lat, lon, location_id):
     response = requests.get(
-        f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,precipitation_probability,wind_speed_10m,apparent_temperature&forecast_hours=6",
+        f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,precipitation_probability,wind_speed_10m,apparent_temperature&forecast_hours=6&timezone=Europe/London",
         timeout=10
     )
     data = response.json()
@@ -58,49 +83,62 @@ def get_hourly_weather(lat, lon, location_id):
 
 def run_ingestion(postcode):
     response = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=10)
-    data = response.json()
-    longitude = data['result']['longitude']
-    latitude = data['result']['latitude']
-    home_location = {
-        "location_id": "home",
-        "latitude": latitude,
-        "longitude": longitude
-    }
+    if response.status_code != 200:
+        status = (f"Error fetching postcode data: {response.status_code}")
+        print(status)
+        return (status)
+    else:
+        data = response.json()
+        longitude = data['result']['longitude']
+        latitude = data['result']['latitude']
+        snapshot_time = datetime.now()
 
-    ring_points = generate_ring(latitude, longitude, 30)
-    ringlocations = [home_location] + ring_points
+        home_location = {
+            "location_id": "home",
+            "latitude": latitude,
+            "longitude": longitude,
+            "nearest_location_distance": 0,
+            "home_postcode": postcode,
+            "snapshot_time": snapshot_time
+        }
 
-    all_readings = []
-    for point in ringlocations:
-        readings = get_hourly_weather(point["latitude"], point["longitude"], point["location_id"])
-        all_readings.extend(readings)
+        ring_points = generate_ring(latitude, longitude, 30)
+        for point in ring_points:
+            point["home_postcode"] = postcode
+            point["snapshot_time"] = snapshot_time
 
-    df = pd.DataFrame(all_readings)
-    print(df)
+        ringlocations = [home_location] + ring_points
 
-    conn = psycopg2.connect(
-        host=db_host, port=db_port, dbname=db_name, user=db_user, password=db_password
-    )
-    cursor = conn.cursor()
+        all_readings = []
+        for point in ringlocations:
+            readings = get_hourly_weather(point["latitude"], point["longitude"], point["location_id"])
+            for reading in readings:
+                reading["snapshot_time"] = snapshot_time
+            all_readings.extend(readings)
 
-    cursor.execute("TRUNCATE TABLE raw_weather_readings")
-    cursor.execute("TRUNCATE TABLE raw_locations")
+        df = pd.DataFrame(all_readings)
+        print(df)
 
-    for loc in ringlocations:
-        cursor.execute(
-            "INSERT INTO raw_locations (location_id, latitude, longitude) VALUES (%s, %s, %s) ON CONFLICT (location_id) DO NOTHING",
-            (loc["location_id"], loc["latitude"], loc["longitude"])
+        conn = psycopg2.connect(
+            host=db_host, port=db_port, dbname=db_name, user=db_user, password=db_password
         )
+        cursor = conn.cursor()
 
-    for reading in all_readings:
-        cursor.execute(
-            "INSERT INTO raw_weather_readings (location_id, time, temperature, rain_probability, wind_speed, apparent_temperature) VALUES (%s, %s, %s, %s, %s, %s)",
-            (reading["location_id"], reading["time"], reading["temperature"], reading["rain_probability"], reading["wind_speed"], reading["apparent_temperature"])
-        )
+        for loc in ringlocations:
+            cursor.execute(
+                "INSERT INTO raw_locations (location_id, home_postcode, latitude, longitude, nearest_location_distance, snapshot_time) VALUES (%s, %s, %s, %s, %s, %s)",
+                (loc["location_id"], loc["home_postcode"], loc["latitude"], loc["longitude"], loc["nearest_location_distance"], loc["snapshot_time"])
+            )
 
-    conn.commit()
-    cursor.close()
-    conn.close()
+        for reading in all_readings:
+            cursor.execute(
+                "INSERT INTO raw_weather_readings (location_id, time, temperature, rain_probability, wind_speed, apparent_temperature, snapshot_time) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (reading["location_id"], reading["time"], reading["temperature"], reading["rain_probability"], reading["wind_speed"], reading["apparent_temperature"], reading["snapshot_time"])
+            )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
 
 
 if __name__ == "__main__":
