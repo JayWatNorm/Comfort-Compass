@@ -22,8 +22,7 @@ def fetch():
 
 @app.route("/")
 def home():
-    # Only show from the start of the next hour onwards - the current
-    # (already in progress) hour is excluded.
+   
     now = datetime.now()
     next_hour_start = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
 

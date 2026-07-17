@@ -1,10 +1,13 @@
 import psycopg2
 import os
+import subprocess
+
 from dotenv import load_dotenv
 
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 init_sql_path = os.path.join(script_dir, "..", "ingestion","db", "init.sql")
+dbt_project_path = os.path.join(script_dir, "..", "dbt_project")
 
 load_dotenv()
 
@@ -57,3 +60,8 @@ cursor.close()
 conn.close()
 
 print("Tables created (or already existed).")
+result = subprocess.run(["dbt", "run"], cwd=dbt_project_path)
+if result.returncode != 0:
+    print("DBT run Failed")
+else:
+    print("DBT run completed successfully")

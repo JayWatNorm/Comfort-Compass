@@ -1,17 +1,84 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weekend Weather Direction</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        #map { height: 600px; }
-        table { border-collapse: collapse; margin-bottom: 20px; }
-        td, th { padding: 4px 8px; }
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 12px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 { font-size: 1.4rem; margin: 16px 0 4px; }
+        h2 { font-size: 1.1rem; margin: 8px 0; }
+
+        form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        form input {
+            flex: 1 1 200px;
+            font-size: 16px; /* prevents iOS Safari auto-zoom on focus */
+            padding: 10px;
+        }
+
+        form button {
+            font-size: 16px;
+            padding: 10px 16px;
+            flex: 0 0 auto;
+        }
+
+        .table-scroll {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 20px;
+        }
+
+        table { border-collapse: collapse; min-width: 480px; }
+        td, th { padding: 6px 10px; text-align: left; white-space: nowrap; }
+
+        #map {
+            height: min(1000px, 75vh);
+            width: 100%;
+            border-radius: 6px;
+        }
+
         .leaflet-tooltip {
-        font-size: 11px;
-        line-height: 1.3;
-        padding: 4px 6px;
+            font-size: 11px;
+            line-height: 1.3;
+            padding: 4px 6px;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+
+        .legend-swatch {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 1px solid white;
+            box-shadow: 0 0 2px rgba(0,0,0,0.5);
+            margin-right: 4px;
+            vertical-align: middle;
         }
     </style>
 </head>
@@ -28,22 +95,32 @@
     <h1>Direction Recommendations</h1>
 
     <h2>Next 6 Hours — Best Option Each Hour</h2>
-    <table border="1">
-        <tr>
-            <th>Time</th>
-            <th>Best Direction</th>
-            <th>Feels Like</th>
-            <th>Reason</th>
-        </tr>
-        {% for row in outlook %}
-        <tr>
-            <td>{{ row[0] }}</td>
-            <td>{{ row[1] }}</td>
-            <td>{{ row[2] }}</td>
-            <td>{{ row[3] }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+    <div class="table-scroll">
+        <table border="1">
+            <tr>
+                <th>Time</th>
+                <th>Best Direction</th>
+                <th>Feels Like</th>
+                <th>Reason</th>
+            </tr>
+            {% for row in outlook %}
+            <tr>
+                <td>{{ row[0] }}</td>
+                <td>{{ row[1] }}</td>
+                <td>{{ row[2] }}</td>
+                <td>{{ row[3] }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="legend">
+        <span><span class="legend-swatch" style="background: hsl(210, 70%, 50%);"></span>Best</span>
+        <span><span class="legend-swatch" style="background: hsl(112, 70%, 50%);"></span></span>
+        <span><span class="legend-swatch" style="background: hsl(15, 80%, 50%);"></span>Worst</span>
+        <span><span class="legend-swatch" style="background: hsl(0, 0%, 60%);"></span>Excluded (rain)</span>
+        <span><span class="legend-swatch" style="background: #1a1a2e;"></span>Home</span>
+    </div>
 
     <div id="map"></div>
 
@@ -56,18 +133,55 @@
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
+        // Colour scale is blue (best rank) through to orange-red (worst rank),
+        // deliberately reusing the app's own hot/cold metaphor rather than a
+        // generic green/red good-bad scale (and easier to read for red-green
+        // colour blindness).
+        function rankColor(rank, maxRank) {
+            if (maxRank <= 1) return 'hsl(210, 70%, 50%)';
+            var t = (rank - 1) / (maxRank - 1);
+            var hue = 210 - (195 * t); // 210 = blue -> 15 = orange-red
+            return 'hsl(' + hue + ', 75%, 50%)';
+        }
+
+        function dotIcon(color, size) {
+            return L.divIcon({
+                className: '',
+                html: '<div style="background:' + color + ';width:' + size + 'px;height:' + size + 'px;' +
+                      'border-radius:50%;border:2px solid white;box-shadow:0 0 3px rgba(0,0,0,0.5);"></div>',
+                iconSize: [size, size],
+                iconAnchor: [size / 2, size / 2]
+            });
+        }
+
+        var eligibleRanks = mapData
+            .filter(function (r) { return r[0] !== 'home' && r[5]; })
+            .map(function (r) { return r[4]; });
+        var maxRank = eligibleRanks.length ? Math.max.apply(null, eligibleRanks) : 1;
+
         for (var i = 0; i < mapData.length; i++) {
             var row = mapData[i];
+            var locationId = row[0];
             var direction = row[1];
             var feelsLike = row[3];
             var rank = row[4];
+            var eligible = row[5];
             var lat = row[6];
             var lon = row[7];
             var reason = row[8];
-            var feelsLikeSequence = row[9].join(", ");
+            var feelsLikeSequence = row[9] ? row[9].join(", ") : "";
             var label = "<b>" + direction + "</b><br>Feels like: " + feelsLike + "<br>Rank: " + rank + "<br>" + reason + "<br>Next 6h: " + feelsLikeSequence;
 
-            L.marker([lat, lon]).addTo(map)
+            var icon;
+            if (locationId === 'home') {
+                icon = dotIcon('#1a1a2e', 20);
+            } else if (!eligible) {
+                icon = dotIcon('hsl(0, 0%, 60%)', 16);
+            } else {
+                icon = dotIcon(rankColor(rank, maxRank), 16);
+            }
+
+            L.marker([lat, lon], { icon: icon }).addTo(map)
                 .bindTooltip(label, { permanent: true, direction: "right", offset: [10, 0] })
                 .openTooltip();
         }
