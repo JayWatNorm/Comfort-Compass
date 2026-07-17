@@ -96,21 +96,18 @@ cd weekend-weather-direction
 Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 installed and running.
 
-1. Copy `.env.example` to `.env`. It already has working defaults for
-   everything — the `DB_*` values are generic, throwaway credentials for
-   this container-only Postgres instance (never exposed outside Docker's
-   internal network, so there's nothing meaningful to secure here), and
-   `POSTCODE` defaults to a real London postcode just so it works out of the
-   box. Change it to whichever postcode is actually relevant for you;
-   everything else can be left as-is. `DB_HOST` also gets automatically overridden to `postgres`
-   inside Docker regardless of what's in `.env`, since containers reach
-   each other by service name, not `localhost`.
+1. Copy `.env.example` to `.env` — every value in it already works as-is
+   (generic, throwaway `DB_*` credentials for this container-only Postgres
+   instance, plus a real London postcode as a placeholder), so this is
+   just `cp .env.example .env` with nothing to fill in. Swap `POSTCODE` for
+   your own later if you want; everything else can stay untouched. (`DB_HOST`
+   gets automatically overridden to `postgres` inside Docker regardless of
+   what's in `.env`, since containers reach each other by service name, not
+   `localhost`.)
 2. `docker compose up --build` — builds the app image, starts Postgres,
    waits for it to be healthy, runs dbt, then starts Flask.
 3. Visit `http://localhost:5000`. The database starts empty — use the
-   postcode field on the dashboard to trigger a live fetch and populate it
-   (there's no automatic ingestion yet; that's still a manual/on-demand
-   step, same as the non-Docker setup).
+   postcode field on the dashboard to trigger a live fetch and populate it.
 
 ### Option B: Manual / local development
 
@@ -130,8 +127,11 @@ setup works identically either way.
    Safe to re-run any time; it's idempotent and won't touch existing data.
    Requires a working dbt profile (`~/.dbt/profiles.yml`) pointing at your
    local Postgres — separate from `docker/profiles.yml`, which is Docker-only.
-4. `python ingestion/ingest.py` to populate the raw tables.
-5. `cd flask_app`, `python app.py`, visit `http://127.0.0.1:5000`.
+4. `cd flask_app`, `python app.py`, visit `http://127.0.0.1:5000`. The
+   database starts empty — use the postcode field on the dashboard to
+   trigger a live fetch and populate it, same as the Docker setup. (You can
+   also run `python ingestion/ingest.py` directly instead, if you'd rather
+   populate it before opening the dashboard at all.)
 
 ## Database schema
 
