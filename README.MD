@@ -37,6 +37,7 @@ deployed for zero recurring cost.
 - **Transform**: dbt (staging + mart models, tests)
 - **Serving**: Flask + Leaflet.js (OpenStreetMap tiles)
 - **Packaging**: Docker + docker-compose — working locally; multi-arch build (Windows dev -> Pi ARM) not yet started
+- **Scheduling**: cron, running inside its own container — hourly ingestion refresh, on top of the on-demand fetch button
 
 ## Project structure
 
@@ -50,8 +51,9 @@ flask_app/
   templates/index.html  # Leaflet map (colour-coded markers) + hourly outlook table
 docker/
   profiles.yml           # dbt connection config for Docker (env_var()-driven, no secrets)
-Dockerfile               # Shared image for ingestion/dbt/Flask
-docker-compose.yml        # postgres + dbt + flask services
+  ingest-cron             # crontab entry: runs ingest.py hourly
+Dockerfile               # Shared image for ingestion/dbt/Flask/cron
+docker-compose.yml        # postgres + dbt + flask + cron services
 ```
 
 ## How the recommendation works
@@ -73,6 +75,11 @@ Ingestion is snapshot-based and append-only (each run is tagged with a
 run is most recent, so triggering a live fetch immediately supersedes
 whatever was there before. This also means historical data is retained,
 laying the groundwork for trend aggregation later.
+
+In the Docker setup, ingestion also runs automatically every hour via a
+dedicated `cron` container (`docker/ingest-cron`), on top of the manual
+fetch button — so the dashboard stays current without anyone needing to
+open it.
 
 ## Status
 
@@ -106,8 +113,10 @@ installed and running.
    `localhost`.)
 2. `docker compose up --build` — builds the app image, starts Postgres,
    waits for it to be healthy, runs dbt, then starts Flask.
-3. Visit `http://localhost:5000`. The database starts empty — use the
-   postcode field on the dashboard to trigger a live fetch and populate it.
+3. Visit `http://localhost:5000`. The database starts empty at first — use
+   the postcode field on the dashboard to trigger a live fetch and populate
+   it immediately, or just wait; a `cron` container also refreshes the data
+   automatically every hour in the background.
 
 ### Option B: Manual / local development
 

@@ -28,6 +28,23 @@ services:
       DB_HOST: postgres
     restart: "no"
 
+  cron:
+    build: .
+    # cron doesn't inherit the container's environment by default - this
+    # writes it to /etc/environment first, which Debian's cron does read
+    # automatically, before starting the cron daemon in the foreground.
+    command: ["sh", "-c", "printenv | grep -v 'no_proxy' >> /etc/environment && cron -f"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dbt:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      DB_HOST: postgres
+    restart: unless-stopped
+
   flask:
     build: .
     depends_on:
