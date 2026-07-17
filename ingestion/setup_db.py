@@ -1,7 +1,10 @@
-import psycopg2
+"""One-off, idempotent setup script: creates the database (if missing),
+creates the raw tables from db/init.sql, and runs dbt to build the mart.
+"""
 import os
 import subprocess
-
+import sys
+import psycopg2
 from dotenv import load_dotenv
 
 
@@ -50,7 +53,7 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 
-with open(init_sql_path) as f:
+with open(init_sql_path, encoding="utf-8") as f:
     init_sql = f.read()
 
 cursor.execute(init_sql)
@@ -60,8 +63,10 @@ cursor.close()
 conn.close()
 
 print("Tables created (or already existed).")
-result = subprocess.run(["dbt", "run"], cwd=dbt_project_path)
-if result.returncode != 0:
+try:
+    subprocess.run(["dbt", "run"], cwd=dbt_project_path, check=True)
+except subprocess.CalledProcessError:
     print("DBT run Failed")
+    sys.exit(1)
 else:
     print("DBT run completed successfully")
