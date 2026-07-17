@@ -96,11 +96,15 @@ cd weekend-weather-direction
 Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 installed and running.
 
-1. Copy `.env.example` to `.env` and fill in `DB_PASSWORD` and `POSTCODE`
-   (the `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USER` defaults work as-is — note
-   that `DB_HOST` gets automatically overridden to `postgres` inside Docker
-   regardless of what's in `.env`, since containers reach each other by
-   service name, not `localhost`; you don't need to change it yourself).
+1. Copy `.env.example` to `.env`. It already has working defaults for
+   everything — the `DB_*` values are generic, throwaway credentials for
+   this container-only Postgres instance (never exposed outside Docker's
+   internal network, so there's nothing meaningful to secure here), and
+   `POSTCODE` defaults to a real London postcode just so it works out of the
+   box. Change it to whichever postcode is actually relevant for you;
+   everything else can be left as-is. `DB_HOST` also gets automatically overridden to `postgres`
+   inside Docker regardless of what's in `.env`, since containers reach
+   each other by service name, not `localhost`.
 2. `docker compose up --build` — builds the app image, starts Postgres,
    waits for it to be healthy, runs dbt, then starts Flask.
 3. Visit `http://localhost:5000`. The database starts empty — use the
@@ -110,7 +114,11 @@ installed and running.
 
 ### Option B: Manual / local development
 
-Requires Python 3.12 and a local Postgres install.
+Requires Python 3.12, and a Postgres instance to connect to — either a
+native install, or reuse the Dockerized one (recommended, one less thing to
+install): `docker compose up -d postgres` starts just the database in the
+background, with its port mapped to `localhost:5432`, so the rest of this
+setup works identically either way.
 
 1. Copy `.env.example` to `.env` and fill in your own values (not
    committed — see `.gitignore`).
