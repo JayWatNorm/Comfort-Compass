@@ -1,4 +1,4 @@
-# Weekend Weather Direction Advisor
+# Comfort Compass
 
 A self-hosted dashboard that recommends which direction to travel to walk
 the dog based on local weather conditions — comparing home against a ring
@@ -95,7 +95,7 @@ Both options start the same way:
 
 ```
 git clone <this repo's URL>
-cd weekend-weather-direction
+cd comfort-compass
 ```
 
 ### Option A: Docker (fastest)

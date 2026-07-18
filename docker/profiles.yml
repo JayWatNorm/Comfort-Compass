@@ -1,4 +1,4 @@
-dbt_project:
+comfort_compass:
   target: dev
   outputs:
     dev:
