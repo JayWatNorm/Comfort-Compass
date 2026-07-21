@@ -94,7 +94,7 @@
 
     <h1>Direction Recommendations</h1>
 
-    <h2>Next 6 Hours — Best Option Each Hour</h2>
+    <h2>Next 5 Hours — Best Option Each Hour</h2>
     <div class="table-scroll">
         <table border="1">
             <tr>
@@ -170,7 +170,7 @@
             var lon = row[7];
             var reason = row[8];
             var feelsLikeSequence = row[9] ? row[9].join(", ") : "";
-            var label = "<b>" + direction + "</b><br>Feels like: " + feelsLike + "<br>Rank: " + rank + "<br>" + reason + "<br>Next 6h: " + feelsLikeSequence;
+            var label = "<b>" + direction + "</b><br>Feels like: " + feelsLike + "<br>Rank: " + rank + "<br>" + reason + "<br>Next 5h: " + feelsLikeSequence;
 
             var icon;
             if (locationId === 'home') {
