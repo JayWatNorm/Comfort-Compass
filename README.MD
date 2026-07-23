@@ -26,7 +26,9 @@ deployed for zero recurring cost.
 ```
 
 - Developed on Windows, containerised with Docker, deployed unchanged to a
-  Raspberry Pi on the home network (Pi deployment itself not yet done).
+  dedicated Ubuntu Server box on the home network (a mini PC, replacing an
+  earlier Raspberry Pi plan; the server itself is provisioned and ready,
+  the app deployment onto it not yet done).
 - Config-driven: a postcode setting determines the centre point; a ring of
   8 surrounding locations (+ home) is generated from it, with coastal points
   corrected using postcodes.io's nearest-postcode distance (pulled back to
@@ -39,7 +41,7 @@ deployed for zero recurring cost.
 - **Storage**: Postgres
 - **Transform**: dbt (staging + mart models, tests)
 - **Serving**: Flask + Leaflet.js (OpenStreetMap tiles)
-- **Packaging**: Docker + docker-compose - working locally; multi-arch build (Windows dev -> Pi ARM) not yet started
+- **Packaging**: Docker + docker-compose - working locally; deployment target is a standard x86_64 mini PC, same architecture as the Windows dev machine, so no multi-arch build is needed
 - **Scheduling**: cron, running inside its own container - hourly ingestion refresh, on top of the on-demand fetch button
 
 ## Project structure
@@ -89,8 +91,9 @@ open it.
 Phase 1 (outdoor-only, PC-based) is fully working end to end, and the whole
 stack is now containerised and confirmed working via Docker Compose. See the
 project plan and progress tracker (in the `Claude` folder, outside this
-repo) for full detail. Multi-arch build and Raspberry Pi deployment not yet
-started.
+repo) for full detail. The deployment target is now a dedicated Ubuntu
+Server mini PC (replacing an earlier Raspberry Pi plan) — the server itself
+is set up, but the app hasn't been deployed onto it yet.
 
 ## Setup
 
@@ -98,7 +101,7 @@ Both options start the same way:
 
 ```
 git clone <this repo's URL>
-cd comfort-compass
+cd Comfort-Compass
 ```
 
 ### Option A: Docker (fastest)
