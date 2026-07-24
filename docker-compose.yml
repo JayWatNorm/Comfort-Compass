@@ -17,7 +17,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
+  restart: unless-stopped
   dbt:
     build: .
     command: ["dbt", "run", "--project-dir", "dbt_project"]
