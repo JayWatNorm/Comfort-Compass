@@ -45,6 +45,8 @@ services:
       - .env
     environment:
       DB_HOST: postgres
+    volumes:
+      - ./.env:/app/.env:ro
     restart: unless-stopped
 
   flask:

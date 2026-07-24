@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 db_host = os.getenv("DB_HOST")
 db_port = os.getenv("DB_PORT")
