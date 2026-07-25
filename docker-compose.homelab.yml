@@ -13,35 +13,29 @@
 # That's why this doesn't need any Docker network-joining: connecting to
 # 192.168.1.203:5434 works the same way from these containers as it does
 # from your own Windows machine.
+#
+# Note: the local `postgres` service is deliberately NOT disabled here.
+# An earlier attempt tried tagging it with a profile so it would never
+# start, but Compose merges `depends_on` between files key-by-key rather
+# than letting an override clear it -- dbt/cron/flask still depended on
+# postgres in the merged config, which conflicted with postgres being
+# profile-excluded and broke config validation entirely. Simpler to just
+# let the bundled postgres container start as normal (its healthcheck
+# passes fine, satisfying depends_on) and sit there unused -- dbt/cron/
+# flask ignore it regardless, since DB_HOST/DB_PORT below point elsewhere.
 
 services:
-  # Tagging this with a profile that's never activated means a plain
-  # `docker compose -f docker-compose.yml -f docker-compose.homelab.yml up`
-  # simply never starts it -- no need to remember to list services manually.
-  postgres:
-    profiles: ["standalone-only"]
-
   dbt:
-    # No longer waits on a local postgres healthcheck that will never run.
-    depends_on: {}
     environment:
       DB_HOST: 192.168.1.203
       DB_PORT: "5434"
 
   cron:
-    # Still waits on dbt finishing -- that ordering has nothing to do with
-    # which database is being used.
-    depends_on:
-      dbt:
-        condition: service_completed_successfully
     environment:
       DB_HOST: 192.168.1.203
       DB_PORT: "5434"
 
   flask:
-    depends_on:
-      dbt:
-        condition: service_completed_successfully
     environment:
       DB_HOST: 192.168.1.203
       DB_PORT: "5434"
