@@ -4,9 +4,9 @@ creates the raw tables from db/init.sql, and runs dbt to build the mart.
 import os
 import subprocess
 import sys
+
 import psycopg2
 from dotenv import load_dotenv
-
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 init_sql_path = os.path.join(script_dir, "..", "ingestion","db", "init.sql")

@@ -1,9 +1,10 @@
-import requests
-import pandas as pd
 import math
-import psycopg2
 import os
 from datetime import datetime
+
+import pandas as pd
+import psycopg2
+import requests
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -91,7 +92,12 @@ def run_ingestion(postcode):
         data = response.json()
         longitude = data['result']['longitude']
         latitude = data['result']['latitude']
-        snapshot_time = datetime.now()
+        # Deliberately naive/local UK time. Open-Meteo is requested with
+        # timezone=Europe/London, so its returned `time` values are already
+        # UK local; snapshot_time has to match that convention or the mart's
+        # join on time would compare a UK-local forecast hour against a UTC
+        # stamp and silently mismatch during BST.
+        snapshot_time = datetime.now()  # noqa: DTZ005
 
         home_location = {
             "location_id": "home",

@@ -1,10 +1,13 @@
-from flask import Flask, render_template, request, redirect, url_for
-from datetime import datetime, timedelta
-import psycopg2
 import os
 import sys
-from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
+import psycopg2
+from dotenv import load_dotenv
+from flask import Flask, redirect, render_template, request, url_for
+
+# Sibling-folder import: flask_app/ and ingestion/ are siblings, so the
+# common parent has to be on sys.path before `from ingestion...` resolves.
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from ingestion.ingest import run_ingestion
 
@@ -22,8 +25,11 @@ def fetch():
 
 @app.route("/")
 def home():
-   
-    now = datetime.now()
+    # Deliberately naive/local UK time, matching snapshot_time in
+    # ingest.py and Open-Meteo's timezone=Europe/London readings -- see
+    # the note there. Using UTC here would filter out the wrong hours
+    # during BST.
+    now = datetime.now()  # noqa: DTZ005
     next_hour_start = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
 
     error = request.args.get("error")
