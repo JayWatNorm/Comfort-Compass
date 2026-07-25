@@ -1,18 +1,16 @@
 # Homelab-only override, layered on top of docker-compose.yml via:
 #   docker compose -f docker-compose.yml -f docker-compose.homelab.yml up -d --build
 #
-# Purpose: point dbt/cron/flask at the shared postgres-dev instance (on the
-# homelab, same one used for local dev) instead of this repo's own bundled
-# postgres service -- so prod data is queryable from pgAdmin the same way
-# dev already is, with no SSH tunnel needed. docker-compose.yml itself is
-# untouched -- a fresh clone anywhere else still gets the fully
+# Purpose: point dbt/cron/flask at the shared postgres-prod instance
+# instead of this repo's own bundled postgres service. docker-compose.yml
+# itself is untouched -- a fresh clone anywhere else still gets the fully
 # self-contained, bundled-postgres setup via that file alone.
 #
-# postgres-dev has a published host port (5434), reachable directly over
-# the LAN by IP -- unlike postgres-prod, which has no exposed port at all.
-# That's why this doesn't need any Docker network-joining: connecting to
-# 192.168.1.203:5434 works the same way from these containers as it does
-# from your own Windows machine.
+# postgres-prod now has a published host port (5435, added 2026-07-25),
+# reachable directly over the LAN by IP -- same as postgres-dev's 5434.
+# No Docker network-joining needed: connecting to 192.168.1.203:5435 works
+# the same way from these containers as it does from your own Windows
+# machine.
 #
 # Note: the local `postgres` service is deliberately NOT disabled here.
 # An earlier attempt tried tagging it with a profile so it would never
@@ -28,14 +26,14 @@ services:
   dbt:
     environment:
       DB_HOST: 192.168.1.203
-      DB_PORT: "5434"
+      DB_PORT: "5435"
 
   cron:
     environment:
       DB_HOST: 192.168.1.203
-      DB_PORT: "5434"
+      DB_PORT: "5435"
 
   flask:
     environment:
       DB_HOST: 192.168.1.203
-      DB_PORT: "5434"
+      DB_PORT: "5435"
