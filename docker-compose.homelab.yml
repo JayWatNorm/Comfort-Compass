@@ -1,0 +1,53 @@
+# Homelab-only override, layered on top of docker-compose.yml via:
+#   docker compose -f docker-compose.yml -f docker-compose.homelab.yml up -d --build
+#
+# Purpose: point dbt/cron/flask at the shared postgres-prod (on homelab-platform's
+# own Docker network) instead of this repo's own bundled postgres service, without
+# changing docker-compose.yml itself -- a fresh clone anywhere else still gets the
+# fully self-contained, bundled-postgres setup via the base file alone.
+
+services:
+  # Tagging this with a profile that's never activated means a plain
+  # `docker compose -f docker-compose.yml -f docker-compose.homelab.yml up`
+  # simply never starts it -- no need to remember to list services manually.
+  postgres:
+    profiles: ["standalone-only"]
+
+  dbt:
+    # No longer waits on a local postgres healthcheck that will never run.
+    depends_on: {}
+    environment:
+      DB_HOST: postgres-prod
+    networks:
+      - default
+      - homelab_shared
+
+  cron:
+    # Still waits on dbt finishing -- that ordering has nothing to do with
+    # which database is being used.
+    depends_on:
+      dbt:
+        condition: service_completed_successfully
+    environment:
+      DB_HOST: postgres-prod
+    networks:
+      - default
+      - homelab_shared
+
+  flask:
+    depends_on:
+      dbt:
+        condition: service_completed_successfully
+    environment:
+      DB_HOST: postgres-prod
+    networks:
+      - default
+      - homelab_shared
+
+networks:
+  # Not created here -- this tells Compose "attach to the network that
+  # homelab-platform's own docker-compose.yml already created," rather
+  # than trying to make a new one.
+  homelab_shared:
+    external: true
+    name: homelab-platform_default
