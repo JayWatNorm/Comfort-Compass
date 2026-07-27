@@ -1,6 +1,3 @@
-Readme was AI generated
-
-
 # Comfort Compass
 
 A self-hosted dashboard that recommends which direction to travel to walk
@@ -27,8 +24,7 @@ deployed for zero recurring cost.
 
 - Developed on Windows, containerised with Docker, deployed unchanged to a
   dedicated Ubuntu Server box on the home network (a mini PC, replacing an
-  earlier Raspberry Pi plan; the server itself is provisioned and ready,
-  the app deployment onto it not yet done).
+  earlier Raspberry Pi plan). Running there now, refreshing hourly.
 - Config-driven: a postcode setting determines the centre point; a ring of
   8 surrounding locations (+ home) is generated from it, with coastal points
   corrected using postcodes.io's nearest-postcode distance (pulled back to
@@ -88,12 +84,20 @@ open it.
 
 ## Status
 
-Phase 1 (outdoor-only, PC-based) is fully working end to end, and the whole
-stack is now containerised and confirmed working via Docker Compose. See the
-project plan and progress tracker (in the `Claude` folder, outside this
-repo) for full detail. The deployment target is now a dedicated Ubuntu
-Server mini PC (replacing an earlier Raspberry Pi plan) — the server itself
-is set up, but the app hasn't been deployed onto it yet.
+Phase 1 (outdoor-only) is complete and deployed. The full stack — Postgres,
+dbt, Flask and hourly cron ingestion — is containerised and running on a
+dedicated Ubuntu Server mini PC on the home network, refreshing every hour
+unattended.
+
+On that deployment the bundled Postgres service is not used: the stack is
+pointed at a shared Postgres instance running alongside other projects on
+the same box, via `docker-compose.homelab.yml` (see Deployment below). The
+repo's own `docker-compose.yml` is untouched by this, so a fresh clone still
+runs completely self-contained.
+
+Not yet built: historical trend aggregation across snapshots (the
+append-only ingestion design exists to support it), and the deferred Phase 2
+indoor temperature sensor.
 
 ## Setup
 
@@ -137,7 +141,7 @@ setup works identically either way.
 2. `python -m venv venv` then activate it, then `pip install -r requirements.txt`.
    Note: dbt-core currently requires Python 3.12 or earlier (not 3.13/3.14)
    due to a dependency (`mashumaro`) compatibility gap.
-3. `python ingestion/setup_db.py` - creates the `weather_direction` database
+3. `python ingestion/setup_db.py` - creates the database named in `.env`
    (if missing), both raw tables from `db/init.sql`, and runs `dbt run`.
    Safe to re-run any time; it's idempotent and won't touch existing data.
    Requires a working dbt profile (`~/.dbt/profiles.yml`) pointing at your
@@ -147,6 +151,26 @@ setup works identically either way.
    trigger a live fetch and populate it, same as the Docker setup. (You can
    also run `python ingestion/ingest.py` directly instead, if you'd rather
    populate it before opening the dashboard at all.)
+
+## Deployment
+
+`docker-compose.yml` is deliberately self-contained: it bundles its own
+Postgres, so anyone cloning this repo gets a working system with nothing but
+Docker installed. That never changes.
+
+Where this is actually deployed, it runs against a shared Postgres instance
+used by several projects on the same server rather than its own bundled one.
+That's expressed as a Compose override file rather than by editing the base
+config:
+
+```
+docker compose -f docker-compose.yml -f docker-compose.homelab.yml up -d --build
+```
+
+The override only redirects `DB_HOST`/`DB_PORT` for the `dbt`, `cron` and
+`flask` services. This mirrors a normal real-world split — self-contained
+repo for local development, shared managed database in production — without
+the repo needing to know anything about the environment it lands in.
 
 ## Database schema
 
