@@ -1,9 +1,17 @@
 # Comfort Compass
 
-A self-hosted dashboard that recommends which direction to travel to walk
-the dog based on local weather conditions - comparing home against a ring
-of surrounding locations and surfacing whichever feels most comfortable,
-hour by hour over the next 6 hours.
+A self-hosted dashboard that recommends which direction to head for a day out
+with the dog, based on local weather - comparing home against a ring of
+surrounding locations and surfacing whichever feels most comfortable, hour by
+hour over the next 6 hours.
+
+![Comfort Compass dashboard: Leaflet map with colour-coded direction markers, an hourly outlook table, and a postcode field for triggering a live fetch](Docs/Comfort-Compass-UI.png)
+
+I actually use this. It was built for planning days out with my beagle, who is
+older and heat-sensitive, so "where is it coolest in the next few hours" is a
+genuinely useful question rather than a contrived one. That requirement shaped
+the scoring logic more than anything else - see *How the recommendation works*
+below.
 
 ## Why this project exists
 
@@ -33,12 +41,19 @@ deployed for zero recurring cost.
 
 ## Tech stack
 
-- **Ingestion**: Python (`requests`, `psycopg2`) - geocoding via postcodes.io, weather via Open-Meteo
-- **Storage**: Postgres
-- **Transform**: dbt (staging + mart models, tests)
-- **Serving**: Flask + Leaflet.js (OpenStreetMap tiles)
-- **Packaging**: Docker + docker-compose - working locally; deployment target is a standard x86_64 mini PC, same architecture as the Windows dev machine, so no multi-arch build is needed
-- **Scheduling**: cron, running inside its own container - hourly ingestion refresh, on top of the on-demand fetch button
+| Layer | Choice | Status |
+|---|---|---|
+| Ingestion | Python (`requests`, `psycopg2`) — geocoding via postcodes.io, weather via Open-Meteo | Built |
+| Storage | PostgreSQL | Built |
+| Transform | dbt (staging + mart models, tests) | Built |
+| Serving | Flask + Leaflet.js (OpenStreetMap tiles) | Built |
+| Packaging | Docker + Docker Compose | Built |
+| Scheduling | cron, in its own container — hourly refresh alongside the on-demand fetch button | Built |
+| Indoor sensor (DHT22) | Raspberry Pi GPIO | **Planned — Phase 2, not built** |
+| Historical trend aggregation | dbt models across snapshots | **Planned — data retained, models not built** |
+
+Deployment target is a standard x86_64 mini PC, the same architecture as the
+Windows dev machine, so no multi-arch build is needed.
 
 ## Project structure
 
@@ -58,6 +73,9 @@ docker-compose.yml        # postgres + dbt + flask + cron services
 ```
 
 ## How the recommendation works
+
+The scoring is built around a heat-sensitive older dog, so it deliberately
+favours *cooler* conditions rather than "nicer weather" in the usual sense.
 
 Each hour, home's **apparent temperature** ("feels like" - combines real
 temperature, humidity and wind) decides a band:
