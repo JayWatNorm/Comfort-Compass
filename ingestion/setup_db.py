@@ -1,6 +1,7 @@
 """One-off, idempotent setup script: creates the database (if missing),
 creates the raw tables from db/init.sql, and runs dbt to build the mart.
 """
+
 import os
 import subprocess
 import sys
@@ -9,7 +10,7 @@ import psycopg2
 from dotenv import load_dotenv
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-init_sql_path = os.path.join(script_dir, "..", "ingestion","db", "init.sql")
+init_sql_path = os.path.join(script_dir, "..", "ingestion", "db", "init.sql")
 dbt_project_path = os.path.join(script_dir, "..", "dbt_project")
 
 load_dotenv()
@@ -22,11 +23,7 @@ db_password = os.getenv("DB_PASSWORD")
 
 # Step 1: connect to the default 'postgres' database to create ours if missing
 conn = psycopg2.connect(
-    host=db_host,
-    port=db_port,
-    dbname="postgres",
-    user=db_user,
-    password=db_password
+    host=db_host, port=db_port, dbname="postgres", user=db_user, password=db_password
 )
 conn.autocommit = True
 cursor = conn.cursor()
@@ -45,11 +42,7 @@ conn.close()
 
 # Step 2: connect to our actual database and run the init.sql schema
 conn = psycopg2.connect(
-    host=db_host,
-    port=db_port,
-    dbname=db_name,
-    user=db_user,
-    password=db_password
+    host=db_host, port=db_port, dbname=db_name, user=db_user, password=db_password
 )
 cursor = conn.cursor()
 

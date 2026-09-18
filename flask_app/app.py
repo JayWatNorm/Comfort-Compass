@@ -15,6 +15,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
+
 @app.route("/fetch", methods=["POST"])
 def fetch():
     postcode = request.form.get("postcode")
@@ -23,6 +24,7 @@ def fetch():
         return redirect(url_for("home", error=error))
     return redirect(url_for("home"))
 
+
 @app.route("/")
 def home():
     # Deliberately naive/local UK time, matching snapshot_time in
@@ -30,7 +32,9 @@ def home():
     # the note there. Using UTC here would filter out the wrong hours
     # during BST.
     now = datetime.now()  # noqa: DTZ005
-    next_hour_start = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+    next_hour_start = (now + timedelta(hours=1)).replace(
+        minute=0, second=0, microsecond=0
+    )
 
     error = request.args.get("error")
 
@@ -39,11 +43,12 @@ def home():
         port=os.getenv("DB_PORT"),
         dbname=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD")
+        password=os.getenv("DB_PASSWORD"),
     )
     cursor = conn.cursor()
 
-    cursor.execute("""
+    cursor.execute(
+        """
         select
             ds.location_id,
             ds.location_direction,
@@ -71,10 +76,13 @@ def home():
             where time >= %s
         )
         order by ds.recommendation_rank
-    """, (next_hour_start, next_hour_start))
+    """,
+        (next_hour_start, next_hour_start),
+    )
     rows = cursor.fetchall()
 
-    cursor.execute("""
+    cursor.execute(
+        """
         select
             ds.time,
             ds.location_direction,
@@ -84,13 +92,16 @@ def home():
         where ds.recommendation_rank = 1
           and ds.time >= %s
         order by ds.time
-    """, (next_hour_start,))
+    """,
+        (next_hour_start,),
+    )
     outlook = cursor.fetchall()
 
     cursor.close()
     conn.close()
 
     return render_template("index.html", rows=rows, outlook=outlook, error=error)
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
