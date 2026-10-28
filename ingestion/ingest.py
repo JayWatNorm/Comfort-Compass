@@ -5,9 +5,9 @@ from datetime import datetime
 import pandas as pd
 import psycopg2
 import requests
-from dotenv import load_dotenv
+from dotenv import dotenv_values, load_dotenv
 
-load_dotenv(override=True)
+load_dotenv()
 
 db_host = os.getenv("DB_HOST")
 db_port = os.getenv("DB_PORT")
@@ -178,6 +178,12 @@ def run_ingestion(postcode):
         conn.close()
 
 
+def current_postcode():
+    # Cron starts a new process every hour, so reading the mounted .env here
+    # applies an edited POSTCODE at the next run without recreating the
+    # container. Database settings stay with the container environment.
+    return dotenv_values().get("POSTCODE") or os.getenv("POSTCODE")
+
+
 if __name__ == "__main__":
-    postcode = os.getenv("POSTCODE")
-    run_ingestion(postcode)
+    run_ingestion(current_postcode())
